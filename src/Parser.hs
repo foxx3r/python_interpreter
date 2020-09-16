@@ -42,3 +42,47 @@ lexeme = L.lexeme sc
 
 symbol :: String -> Parser String
 symbol = L.symbol sc
+
+parens :: Parser a -> Parser a
+parens = between (symbol "(") (symbol ")")
+
+bracers :: Parser a -> Parser a
+bracers = between (symbol "[") (symbol "]")
+
+quotes :: Parser a -> Parser a
+quotes = between (symbol "'") (symbol "'")
+
+integer :: Parser Integer
+integer = lexeme L.decimal
+
+float :: Parser Double
+float = lexeme L.float
+
+semi :: Parser String
+semi = symbol ";"
+
+comma :: Parser String
+comma = symbol ","
+
+point :: Parser String
+point = symbol "."
+
+rword :: String -> Parser ()
+rword w = (lexeme . try) (string w *> notFollowedBy alphaNumChar)
+
+rws :: [String]
+rws = [ "if", "then", "else", "while"
+      , "do", "conditional" , "true", "false"
+      , "list", "[", "!", "and"
+      , "or", "def", "class", "return"
+      , "elif", "Call", "Void", "in"
+      , "lambda", "module", "for"
+      ]
+
+identifier :: Parser String
+identifier = (lexeme . try) (p >>= check)
+ where
+  p = (:) <$> (letterChar <|> char '_') <*> many (alphaNumChar <|> char '_')
+  check x = if x `elem` rws
+    then fail $ "keyword " ++ show x ++ " cannot be an identifier"
+    else return x
