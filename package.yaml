@@ -1,0 +1,62 @@
+name:                python_interpreter
+version:             0.1.0.0
+github:              "githubuser/python_interpreter"
+license:             BSD3
+author:              "foxx3r"
+maintainer:          "coluna123@protonmail.ch"
+copyright:           "2020 foxx3r"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            This is a simple Python interpreter made in Haskell
+# category:            Interpreter
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/foxx3r/python_interpreter>
+
+dependencies:
+- base >= 4.9 && < 5
+- megaparsec
+- neat-interpolation
+- parser-combinators
+- text
+- qm-interpolated-string
+- pretty-simple
+- containers
+
+library:
+  source-dirs: src
+
+executables:
+  python_interpreter-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - python_interpreter
+    - megaparsec
+    - neat-interpolation
+    - parser-combinators
+    - text
+    - qm-interpolated-string
+    - pretty-simple
+    - containers
+
+tests:
+  python_interpreter-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - python_interpreter
