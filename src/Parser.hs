@@ -71,7 +71,7 @@ rword :: String -> Parser ()
 rword w = (lexeme . try) (string w *> notFollowedBy alphaNumChar)
 
 rws :: [String]
-rws = [ "if", "then", "else", "while"
+rws = ["if", "then", "else", "while"
       , "do", "conditional" , "true", "false"
       , "list", "[", "!", "and"
       , "or", "def", "class", "return"
