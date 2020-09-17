@@ -176,3 +176,42 @@ call2Func = do
     arg <- parens (sepBy pyExpr comma)
     arg1 <- parens (sepBy1 pyExpr comma)
     return (Call2Func (CallFunc name1 arg) arg1)
+
+lambFunc :: Parser PTerm
+lambFunc = do
+    rword "lambda"
+    arg <- sepBy identifier comma
+    void (symbol ":")
+    body <- try ternIfTerm <|> pyExpr
+    return (LambdaFunc arg body) 
+
+return' :: Parser Stmt
+return' = do
+    rword "return"
+    expr <- pyExpr
+    return (Return expr)
+
+listPars :: Parser PTerm
+listPars = do
+    arg <- bracers (sepBy pyExpr comma)
+    return (PyList arg)
+
+defClass :: Parser Stmt
+defClass = L.indentBlock scn p
+    where
+        p = do
+            rword "class"
+            name <- identifier
+            void (symbol ":")
+            return (L.IndentMany Nothing (return . (Class name)) stmt)
+
+callStatClass :: Parser PTerm
+callStatClass = do
+    name <- classIdentifier
+    return (StaticCall name)
+
+callClass :: Parser PTerm
+callClass = do
+    name <- classIdentifier
+    void (symbol "()")
+    return (CallClass name)
