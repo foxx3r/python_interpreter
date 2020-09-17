@@ -90,10 +90,10 @@ identifier = (lexeme . try) (p >>= check)
 classIdentifier :: Parser String
 classIdentifier = (lexeme . try) (p >>= check)
     where
-    p = (:) <$> (upperChar <|> char '_') <*> many (alphaNumChar <|> char '_')
-    check x = if x `elem` rws
-        then fail $ "keyword " ++ show x ++ " cannot be an identifier"
-        else return x
+        p = (:) <$> (upperChar <|> char '_') <*> many (alphaNumChar <|> char '_')
+        check x = if x `elem` rws
+            then fail $ "keyword " ++ show x ++ " cannot be an identifier"
+            else return x
 
 fWord :: Parser String
 fWord = (lexeme . try) p 
