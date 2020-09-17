@@ -126,6 +126,6 @@ moduleParser :: Parser Stmt
 moduleParser = L.nonIndented scn (L.indentBlock scn p)
     where
         p = do
-            rword "module"
-            name <- identifier
-            return (L.IndentSome (Just (mkPos 5)) (return . (Module name)) stmt)
+                rword "module"
+                name <- identifier
+                return (L.IndentSome (Just (mkPos 5)) (return . (Module name)) stmt)
