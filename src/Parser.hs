@@ -126,6 +126,53 @@ moduleParser :: Parser Stmt
 moduleParser = L.nonIndented scn (L.indentBlock scn p)
     where
         p = do
-                rword "module"
-                name <- identifier
-                return (L.IndentSome (Just (mkPos 5)) (return . (Module name)) stmt)
+            rword "module"
+            name <- identifier
+            return (L.IndentSome (Just (mkPos 5)) (return . (Module name)) stmt)
+
+whileParser :: Parser Stmt
+whileParser = between sc eof stmt
+
+stmt :: Parser Stmt
+stmt = f <$> sepBy1 stmt' semi
+    where
+        f [x] = x
+        f xs  = Seq xs
+
+stmt' :: Parser Stmt
+stmt' = try moduleParser
+    <|> try whileStmt
+    <|> try forStmt
+    <|> try assignclsExpr
+    <|> try assignTerm 
+    <|> try ifStmt
+    <|> try (parens stmt)
+    <|> try (bracers stmt) 
+    <|> try defFun
+    <|> try defClass
+    <|> try return'
+    <|> try elseStmt
+    <|> try (SingleTerm <$> pyExpr)
+
+defFun :: Parser Stmt
+defFun = L.indentBlock scn p
+    where
+        p = do
+            rword "def"
+            name <- identifier
+            arg <- parens (sepBy identifier comma)
+            symbol ":"
+            return (L.IndentSome Nothing (return . (Function name arg)) stmt)   
+
+callFunc :: Parser PTerm
+callFunc = do
+    name1 <- try dynMetIndent <|> identifier
+    arg <- parens (sepBy pyExpr comma)
+    return (CallFunc name1 arg)
+
+call2Func :: Parser PTerm
+call2Func = do
+    name1 <- identifier
+    arg <- parens (sepBy pyExpr comma)
+    arg1 <- parens (sepBy1 pyExpr comma)
+    return (Call2Func (CallFunc name1 arg) arg1)
