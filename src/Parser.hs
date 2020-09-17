@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# OPTIONS_GHC -fwarn-incomplete-patterns -fwarn-incomplete-uni-patterns #-}
 
 module Parser where
@@ -86,3 +86,46 @@ identifier = (lexeme . try) (p >>= check)
   check x = if x `elem` rws
     then fail $ "keyword " ++ show x ++ " cannot be an identifier"
     else return x
+
+classIdentifier :: Parser String
+classIdentifier = (lexeme . try) (p >>= check)
+ where
+  p = (:) <$> (upperChar <|> char '_') <*> many (alphaNumChar <|> char '_')
+  check x = if x `elem` rws
+    then fail $ "keyword " ++ show x ++ " cannot be an identifier"
+    else return x
+
+fWord :: Parser String
+fWord = (lexeme . try) p 
+ where
+  p = (:) <$> (alphaNumChar <|> char '_') <*> many (alphaNumChar <|> char '_')
+
+fieldIndent :: Parser String
+fieldIndent = (lexeme . try) $ do
+  first <- identifier
+  void (symbol ".")
+  second <- identifier
+  return (first ++ "." ++ second)
+
+strIndent :: Parser String
+strIndent = (lexeme . try) $ do
+  name <- quotes identifier
+  return name
+
+dynMetIndent :: Parser String
+dynMetIndent = (lexeme . try) $ do
+  first <- fieldIndent
+  second <- (try $ bracers strIndent) <|> (try $ parens strIndent)  
+  return (first ++ second)
+
+check' :: PTerm -> Bool
+check' (Var x) = False
+check' _  = True
+
+moduleParser :: Parser Stmt
+moduleParser = L.nonIndented scn (L.indentBlock scn p)
+  where
+    p = do
+      rword "module"
+      name <- identifier
+      return (L.IndentSome (Just (mkPos 5)) (return . (Module name)) stmt)
