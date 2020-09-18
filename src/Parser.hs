@@ -279,3 +279,64 @@ assignclsExpr = do
 
 pyExpr :: Parser PTerm
 pyExpr = try (makeExprParser term eOperators) <|> term
+
+clsExpr :: Parser PTerm
+clsExpr = try (makeExprParser term fldOperator) <|> term
+
+fldOperator :: [[Operator Parser PTerm]]
+fldOperator = [[ InfixL (BiOp Fld <$ string ".") ]]
+
+eOperators :: [[Operator Parser PTerm]]
+eOperators =
+  [
+    [Prefix (Not <$ rword  "not")
+      , Prefix (Neg <$ symbol "-")]
+    ,
+    [InfixL (BiOp Fld <$ string ".")]
+    ,
+    map InfixL
+    [BiOp AsMod <$ symbol "%="
+      , BiOp Mod <$ symbol "%"
+      , BiOp AsPow <$ symbol "**="
+      , BiOp Pow <$ symbol "**"
+    ]
+    ,
+    map InfixL
+    [BiOp AsMul <$ symbol "*="
+      , BiOp Mul <$ symbol "*"
+    ]
+    ,
+    map InfixL
+    [BiOp AsAdd <$ symbol "+="
+      , BiOp AsSub <$ symbol "-="
+      , BiOp Add <$ symbol "+"
+      , BiOp Sub <$ symbol "-"
+      ]
+    ,
+    map InfixN
+    [BiOp Eq <$ symbol "=="
+      , BiOp NotEq <$ symbol "!="
+      , BiOp LessEq <$ symbol "<="
+      , BiOp Less <$ symbol "<"
+      , BiOp GreaterEq  <$ symbol ">="
+      , BiOp Greater <$ symbol ">"
+    ]
+    ,
+    [InfixL (BiOp And <$ rword "and")
+      , InfixL (BiOp Or  <$ rword "or")]
+  ]
+
+term :: Parser PTerm
+term = parens pyExpr
+    <|> try callClass
+    <|> try callStatClass
+    <|> try call2Func
+    <|> try callFunc
+    <|> try (bracers pyExpr)
+    <|> try listPars
+    <|> try lambFunc
+    <|> try (Var <$> identifier)
+    <|> try (StrConst <$> strIndent)
+    <|> try (IntConst <$> integer)
+    <|> (BoolConst True <$ rword "true")
+    <|> (BoolConst False <$ rword "false")
