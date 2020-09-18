@@ -215,3 +215,67 @@ callClass = do
     name <- classIdentifier
     void (symbol "()")
     return (CallClass name)
+
+ifStmt :: Parser Stmt
+ifStmt = L.indentBlock scn p
+    where
+        p = do
+            rword "if"
+            cond <- pyExpr
+            void (symbol ":")
+            return (L.IndentMany Nothing (return . (If cond)) stmt)
+
+ternIfTerm :: Parser PTerm
+ternIfTerm = do
+    term <- pyExpr
+    rword "if"
+    cond <- pyExpr
+    rword "else"
+    term' <- pyExpr
+    return (TernIf cond term term')
+
+
+elseStmt :: Parser Stmt
+elseStmt = L.indentBlock scn p
+    where
+        p = do
+            rword "else"
+            void (symbol ":")
+            return (L.IndentMany Nothing (return . (Else)) stmt)     
+
+forStmt :: Parser Stmt
+forStmt = L.indentBlock scn p
+    where
+        p = do
+            rword "for"
+            exp <- identifier
+            rword "in"
+            cont <- pyExpr
+            void (symbol ":")
+            return (L.IndentMany Nothing (return . (For exp cont)) stmt)
+
+whileStmt :: Parser Stmt
+whileStmt = L.indentBlock scn p
+    where
+        p = do
+            rword "while"
+            cond <- pyExpr
+            void (symbol ":")
+            return (L.IndentMany Nothing (return . (While cond)) stmt)  
+
+assignTerm :: Parser Stmt
+assignTerm = do
+    var <- identifier
+    void <- (symbol "=")
+    expr <- try lambFunc <|> try ternIfTerm <|> pyExpr 
+    return (Assign (Var var) expr)
+
+assignclsExpr :: Parser Stmt
+assignclsExpr = do
+    var <- clsExpr
+    void <- (symbol "=")
+    expr <- try lambFunc <|> try ternIfTerm <|> pyExpr
+    return (Assign var expr)
+
+pyExpr :: Parser PTerm
+pyExpr = try (makeExprParser term eOperators) <|> term
