@@ -17,7 +17,6 @@ data MyEither
     deriving (Show)
 
 newtype Context = Context {getContext :: M.Map PTerm MyEither} deriving (Show)
-
 type Env = Either String
 
 createContext :: Context
