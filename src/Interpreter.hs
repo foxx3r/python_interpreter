@@ -59,16 +59,7 @@ evalProg l = evalSeq createContext l
 
 evalSeq :: Context -> Stmt -> Env Context
 evalSeq ctx (Module name value) = foldM (evalSeq) ctx value
---     helper ctx (x:xs) = do
---         ctx' <- evalSeq ctx x
---         helper ctx' xs
---     helper ctx [] = return ctx
-    
 evalSeq ctx (Seq value) = foldM (evalSeq) ctx value
---     helper ctx (x:xs) = do
---         ctx' <- evalStmt ctx x
---         helper ctx' xs
---     helper ctx [] = return ctx
 evalSeq ctx v = evalStmt ctx v
 
 evalStmt :: Context -> Stmt -> Env Context
@@ -242,7 +233,6 @@ eval ctx term = case term of
         case fst term' of
             LambdaFunc _ _ -> return term'
             otherwise -> return (fst term', ctx)
-        
     (Call2Func name arg) -> case name of
         (CallFunc name' arg') -> do 
             body <- callFun ctx (Var name') arg'
