@@ -250,3 +250,153 @@ eval ctx term = case term of
             BoolConst False -> eval (snd cond') elseValue
             StrConst "" -> eval (snd cond') elseValue
             otherwise -> eval (snd cond') ifValue
+
+callFun :: Context -> PTerm -> [PTerm] -> Env (PTerm, Context)
+callFun ctx name arg = do
+    case getStmt ctx name of
+        (Left _) -> do
+            case getValue ctx name of
+                (Left _) -> do
+                    case name of
+                        (LambdaFunc params body) -> do
+                            ctx' <- evalArgs ctx params arg
+                            body' <- eval ctx' body
+                            return body'
+                        otherwise -> fail ("No lambda " ++ show ctx)
+                (Right (LambdaFunc params body)) -> do
+                    ctx' <- evalArgs ctx params arg
+                    body' <- eval ctx' body
+                    return body'
+                otherwise -> fail "Incorrect function call"
+        (Right (Function name params body)) -> do
+            ctx' <- evalArgs ctx params arg
+            body' <- evalSeq ctx' (Seq body)
+            term' <- getValue body' (Var "return")
+            case term' of
+                (LambdaFunc _ _) -> return (term', body')
+                otherwise -> return (term', ctx) 
+            
+
+        otherwise -> fail "Incorrect function call"
+
+intOp :: Context -> (Integer -> Integer -> Integer) -> PTerm -> PTerm -> Env (PTerm, Context)
+intOp ctx f l r = do
+    l' <- eval ctx l
+    case fst l' of
+        IntConst l'' -> do
+            r' <- eval ctx r
+            case fst r' of
+                IntConst r'' -> return (IntConst (f l'' r''), snd r')
+                BoolConst False -> return (IntConst (f l'' 0), snd r')
+                BoolConst True -> return (IntConst (f l'' 1), snd r')  
+                otherwise -> fail $ "Wrong type of right arithmetics operand " ++ (show r)
+        otherwise -> fail $ "Wrong type of left arithmetics operand " ++ (show l)
+
+binOp :: Context -> (Integer -> Integer -> Bool) -> PTerm -> PTerm -> Env (PTerm, Context)
+binOp ctx f l r = do
+    l' <- eval ctx l
+    case fst l' of
+        IntConst l'' -> do
+            r' <- eval ctx r
+            case fst r' of
+                IntConst r'' -> return (BoolConst (f l'' r''), snd r')
+                otherwise -> fail $ "Wrong type of right arithmetics operand " ++ (show r)
+        otherwise -> fail $ "Wrong type of left arithmetics operand " ++ (show l)
+
+strAdd :: Context -> (String -> String -> String) -> String -> PTerm -> Env (PTerm, Context)
+strAdd ctx f l r = do
+    r' <- eval ctx r
+    case fst r' of
+        StrConst r'' -> return (StrConst (f l r''), ctx)
+        otherwise -> fail $ "Wrong type of right string operand " ++ (show r)
+
+strMul :: Context -> String -> PTerm -> Env (PTerm, Context)
+strMul ctx l r = do
+    r' <- eval ctx r
+    case fst r' of
+        IntConst r'' -> return (StrConst (concat $ uncurry replicate ((fromIntegral r''), l)), ctx)
+        otherwise -> fail $ "Wrong type of right string operand " ++ (show r)
+
+listAdd :: Context -> ([PTerm] -> [PTerm] -> [PTerm]) -> [PTerm] -> PTerm -> Env (PTerm, Context)
+listAdd ctx f l r = do
+    r' <- eval ctx r
+    case fst r' of
+        PyList r'' -> return (PyList (f l r''), ctx)
+        otherwise -> fail $ "Wrong type of right list operand " ++ (show r)
+
+listMul :: Context -> PTerm -> PTerm -> Env (PTerm, Context)
+listMul ctx l r = do
+    l' <- eval ctx l
+    case fst l' of
+        (PyList l'') -> do
+            r' <- eval ctx r
+            case fst r' of
+                (IntConst r'') -> return (PyList (concat $ uncurry replicate ((fromIntegral r''), l'')), ctx)
+                otherwise -> fail $ "Wrong type of right list operand " ++ (show r)
+        (IntConst l'') -> do
+            r' <- eval ctx r
+            case fst r' of
+                PyList r'' -> return (PyList (concat $ uncurry replicate ((fromIntegral l''), r'')), ctx)
+                otherwise -> fail $ "Wrong type of right list operand" ++ (show r)
+        otherwise -> fail $ "Wrong type of right list operand " ++ (show r)
+
+unOp :: Context -> (Integer -> Integer -> Integer) -> PTerm -> PTerm -> Env (PTerm, Context)
+unOp ctx f name r = do
+    case name of
+        nm@(Var name') -> do
+            value <- getValue ctx nm
+            case value of
+                l@(IntConst _) -> case r of
+                    r@(IntConst _) -> do
+                        r'' <- intOp ctx f l r
+                        ctx' <- setValue ctx nm (fst r'')
+                        term' <- getValue ctx' nm
+                        return $ (term', ctx)
+                    otherwise -> fail $ "Wrong type of right list operand " ++ (show r)
+                otherwise -> fail "Wrong type of left arithmetics operand"
+        otherwise -> fail $ "Can't assign to literal"
+
+fldOp :: Context -> PTerm -> PTerm -> Env (PTerm, Context)
+fldOp ctx l (CallFunc name arg) = do
+    l' <- eval ctx l
+    case fst l' of
+        (CallClass name') -> do
+            statment <- getStmt ctx (Var name')
+            case statment of
+                (Class name'' body) -> do
+                    fun <- findFunc name body
+                    ctx' <- setStmt ctx (Var name) fun
+                    term <- callFun ctx' (Var name) arg
+                    return term
+                otherwise -> fail "Incorrect fold operation"
+        (StaticCall name') -> do
+            statment <- getStmt ctx (Var name')
+            case statment of
+                (Class name'' body) -> do
+                    fun <- findFunc name body
+                    ctx' <- setStmt ctx (Var name) fun
+                    term <- callFun ctx' (Var name) arg
+                    return term
+                otherwise -> fail "Incorrect fold operation"
+        otherwise -> fail $ show (fst l')
+
+fldOp ctx l (Var name) = do
+    l' <- eval ctx l
+    case fst l' of
+        (CallClass name') -> do
+            statment <- getStmt ctx (Var name')
+            case statment of
+                (Class name'' body) -> do
+                    term <- findField (Var name) body
+                    return (term, ctx)
+                otherwise -> fail "Incorrect fold term"
+        (StaticCall name') -> do
+            statment <- getStmt ctx (Var name')
+            case statment of
+                (Class name'' body) -> do
+                    term <- findField (Var name) body
+                    return (term, ctx)
+                otherwise -> fail "Incorrect fold operation"
+        otherwise -> fail "Incorrect fold term"
+
+fldOp ctx l _ = fail "Incorrect"
